@@ -32,4 +32,20 @@ public class AuthController {
         }
         return ResponseEntity.status(403).body("Senha incorreta");
     }
+
+    @PostMapping("/login/cozinha")
+    public ResponseEntity<String> loginCozinha(@RequestBody String senha) {
+        if (authService.isCozinha(senha)) {
+            return ResponseEntity.ok("COZINHA AUTORIZADO");
+        }
+        return ResponseEntity.status(403).body("Senha incorreta");
+    }
+
+    @PostMapping("/login/atendente")
+    public ResponseEntity<String> loginBalcao(@RequestBody String senha) {
+        if (authService.isBalcao(senha)) {
+            return ResponseEntity.ok("ATENDENTE AUTORIZADO");
+        }
+        return ResponseEntity.status(403).body("Senha incorreta");
+    }
 }
