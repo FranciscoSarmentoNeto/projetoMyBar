@@ -1,0 +1,84 @@
+package br.com.mybar.project.infra.security;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.CorsFilter;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Autowired
+    SecurityFilter securityFilter;
+
+    @Autowired
+    CorsFilter corsFilter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        // Rotas Públicas
+                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Request de debug
+                        .requestMatchers("/error").permitAll()
+                        // request de debug termina aqui
+
+                        // Usuários
+                        .requestMatchers(HttpMethod.GET, "/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/usuarios/**").permitAll()
+
+                        // Pagamentos
+                        .requestMatchers(HttpMethod.POST, "/pagamentos/**").hasAnyRole("ADMIN", "GARCOM")
+                        .requestMatchers(HttpMethod.DELETE, "/pagamentos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/pagamentos/**").hasAnyRole("ADMIN", "GARCOM")
+
+                        // =========================================================
+                        // LIBERADO TEMPORARIAMENTE PARA TESTE DE INTEGRAÇÃO
+                        // =========================================================
+                        .requestMatchers("/contas/**").permitAll()
+                        .requestMatchers("/contas").permitAll()
+                        .requestMatchers("/clientes/**").permitAll()
+                        .requestMatchers("/clientes").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs",
+                                "/webjars/**")
+                        .permitAll()
+
+                        .anyRequest().authenticated())
+                .addFilterBefore(corsFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
