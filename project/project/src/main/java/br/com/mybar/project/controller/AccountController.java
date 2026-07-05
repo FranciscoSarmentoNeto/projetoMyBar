@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import br.com.mybar.project.model.Account;
+import br.com.mybar.project.model.DataTransferObject.AccountClosingDTO;
 import br.com.mybar.project.service.AccountService;
 
 import java.util.List;
@@ -56,5 +57,14 @@ public class AccountController {
     public ResponseEntity<Long> contarContas()
     {
         return ResponseEntity.status(200).body(contaService.contarContas());
+    }
+
+    @PutMapping("/{id}/fechar")
+    public ResponseEntity<AccountClosingDTO> fecharConta(
+            @PathVariable Long id,
+            @RequestParam String codigoGarcom,
+            @RequestParam String senha) {
+
+        return ResponseEntity.ok(contaService.fecharConta(id, codigoGarcom, senha));
     }
 }

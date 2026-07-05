@@ -44,16 +44,13 @@ public class UserService {
     }
 
     public User editarUsuario(Integer codigo, RegisterDTO data) {
-        // 1. Busca o usuário que já existe no banco
         User usuarioExistente = repository.findById(codigo)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
-        // 2. Atualiza apenas os dados permitidos
         usuarioExistente.setNome(data.nome());
         usuarioExistente.setEmail(data.login());
         usuarioExistente.setTipo(data.role());
 
-        // 3. Atualiza a senha APENAS se uma nova for fornecida
         if (data.password() != null && !data.password().trim().isEmpty()) {
             String senhaCriptografada = new BCryptPasswordEncoder().encode(data.password());
             usuarioExistente.setSenha(senhaCriptografada);
@@ -89,7 +86,6 @@ public class UserService {
         autenticarGarcom(codigoStr, senha);
     }
 
-    // Subfluxo do documento — verifica senha do administrador pelo email
     public void verificarSenhaAdmin(String email, String senha) {
         User usuario = (User) repository.findByEmail(email);
 
@@ -105,4 +101,16 @@ public class UserService {
             throw new IllegalArgumentException("Senha do administrador inválida.");
         }
     }
+
+    public User buscarPorCodigo(String codigoStr) {
+    int codigo;
+    try {
+        codigo = Integer.parseInt(codigoStr);
+    } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("Código de garçom inválido.");
+    }
+
+    return repository.findByCodigo(codigo)
+            .orElseThrow(() -> new IllegalArgumentException("Garçom não encontrado com o código: " + codigo));
+}
 }

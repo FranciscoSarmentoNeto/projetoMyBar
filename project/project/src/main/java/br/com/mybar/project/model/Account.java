@@ -34,7 +34,6 @@ public class Account {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Client cliente;
 
-    // Relacionamento adicionado conforme o diagrama
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "garcon_abertura_id", nullable = false)
     private User garconAbertura;
@@ -42,7 +41,6 @@ public class Account {
     public Account() {
     }
 
-    // Callback para preencher data e hora automaticamente na criação
     @PrePersist
     protected void onPrePersist() {
         this.dataAbertura = LocalDate.now();
@@ -105,7 +103,6 @@ public class Account {
         this.garconAbertura = garconAbertura;
     }
 
-    // Equals e HashCode baseados no ID
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

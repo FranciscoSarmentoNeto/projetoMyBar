@@ -30,7 +30,7 @@ public class MenuItemController {
 
     @PostMapping
     public ResponseEntity<MenuItem> criar(@RequestBody MenuItem itemCardapio) {
-        itemCardapio.marcarComoAntigo(); // Garante o isNew() configurado para INSERT manual
+        itemCardapio.marcarComoAntigo(); 
         MenuItem novoItem = itemCardapioService.salvar(itemCardapio);
         return ResponseEntity.status(HttpStatus.CREATED).body(novoItem);
     }

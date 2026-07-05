@@ -4,9 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
+import br.com.mybar.project.util.CpfValidator;
 import br.com.mybar.project.model.Actors.Client;
-import br.com.mybar.project.repository.CustomerRepositoryInterface; // Lembre de renomear a InterfaceCliente
+import br.com.mybar.project.repository.CustomerRepositoryInterface;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,8 +27,15 @@ public class CustomerService {
     }
 
     public Client incluirCliente(Client cliente) {
-        // Verifica se o CPF já está cadastrado para evitar erro 500 do banco
-        if (interfaceCliente.findByCpf(cliente.getCpf()).isPresent()) {
+        String cpfLimpo = CpfValidator.limpar(cliente.getCpf());
+
+        if (!CpfValidator.isValid(cpfLimpo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF inválido.");
+        }
+
+        cliente.setCpf(cpfLimpo);
+
+        if (interfaceCliente.findByCpf(cpfLimpo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Já existe um cliente cadastrado com este CPF.");
         }
         return interfaceCliente.save(cliente);
@@ -37,11 +44,9 @@ public class CustomerService {
     public Client editarCliente(Long id, Client clienteAtualizado) {
         Client clienteExistente = buscarPorId(id);
 
-        // Atualiza os dados permitidos
         clienteExistente.setNome(clienteAtualizado.getNome());
         clienteExistente.setTelefone(clienteAtualizado.getTelefone());
         clienteExistente.setSexo(clienteAtualizado.getSexo());
-        // Obs: Não atualizamos o CPF, pois o documento diz que é alterável apenas na inclusão.
 
         return interfaceCliente.save(clienteExistente);
     }
@@ -49,13 +54,10 @@ public class CustomerService {
     public void deletarCliente(Long id) {
         Client cliente = buscarPorId(id);
 
-        // TODO: Futuramente, verificar se o cliente tem contas atreladas antes de deletar
-        // Se tiver, lançar um erro ou fazer soft delete
-
         interfaceCliente.delete(cliente);
     }
 
-    public Optional<Client> findCpf(String cpf){
+    public Optional<Client> findCpf(String cpf) {
         return interfaceCliente.findByCpf(cpf);
     }
 }

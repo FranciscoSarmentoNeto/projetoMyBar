@@ -1,59 +1,64 @@
 package br.com.mybar.project.controller;
 
-import br.com.mybar.project.model.DataTransferObject.FinalizarEntregaDTO;
-import br.com.mybar.project.model.ItemConta;
-import br.com.mybar.project.service.DeliveryService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+import br.com.mybar.project.model.AccountItem;
+import br.com.mybar.project.model.Actors.User;
+import br.com.mybar.project.repository.AccountItemRepositoryInterface;
+import br.com.mybar.project.service.UserService;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/delivery")
+@RequestMapping("/entregas")
 public class DeliveryController {
+    @Autowired
+    private UserService usuarioService;
 
     @Autowired
-    private DeliveryService deliveryService;
+    private AccountItemRepositoryInterface iItemConta;
 
-    /**
-     * Endpoint para o atendente indicar que iniciou o preparo/separação do item no balcão.
-     * PUT /api/delivery/{id}/iniciar
-     */
-    @PutMapping("/{id}/iniciar")
-    public ResponseEntity<ItemConta> iniciarPreparacao(@PathVariable Long id) {
-        try {
-            ItemConta item = deliveryService.iniciarPreparacaoNoBalcao(id);
-            return ResponseEntity.ok(item);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+    @GetMapping
+    public ResponseEntity<List<AccountItem>> listar() {
+        return ResponseEntity.ok(
+                iItemConta.findByAtivoTrueAndDataEntregaCozinhaIsNotNull()
+        );
     }
 
-    /**
-     * Endpoint para finalizar e dar baixa na entrega do item.
-     * Exige a validação por código e senha do atendente no corpo da requisição.
-     * PUT /api/delivery/{id}/finalizar
-     */
-    @PutMapping("/{id}/finalizar")
-    public ResponseEntity<ItemConta> finalizarEntrega(
-            @PathVariable Long id, 
-            @RequestBody FinalizarEntregaDTO dto) {
-        try {
-            ItemConta item = deliveryService.finalizarEntregaNoBalcao(
-                    id, 
-                    dto.codigoAtendente(), 
-                    dto.senhaAtendente()
-            );
-            return ResponseEntity.ok(item);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        } catch (SecurityException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
+    @PutMapping("/{id}/receber")
+    public ResponseEntity<AccountItem> receberNoBar(@PathVariable Long id) {
+        AccountItem item = iItemConta.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item não encontrado."));
+        item.setDataRecebimentoBar(LocalDate.now());
+        item.setHoraRecebimentoBar(LocalTime.now());
+        return ResponseEntity.ok(iItemConta.save(item));
+    }
+
+    @PutMapping("/{id}/entregar")
+    public ResponseEntity<AccountItem> entregarAoGarcom(
+            @PathVariable Long id,
+            @RequestParam String codigoAtendente,
+            @RequestParam String senha,
+            @RequestParam String codigoGarcom) {
+
+        usuarioService.verificarSenhaGarcom(codigoAtendente, senha);
+
+        AccountItem item = iItemConta.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item não encontrado."));
+
+        if (item.getDataRecebimentoBar() == null) {
+            throw new IllegalStateException("Item precisa ser recebido no bar antes de ser entregue.");
         }
+
+        User garcomQueVaiLevar = usuarioService.buscarPorCodigo(codigoGarcom);
+
+        item.setDataEntregaBar(LocalDate.now());
+        item.setHoraEntregaBar(LocalTime.now());
+        item.setGarcomEntrega(garcomQueVaiLevar);
+
+        return ResponseEntity.ok(iItemConta.save(item));
     }
 }

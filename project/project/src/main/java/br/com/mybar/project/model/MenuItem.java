@@ -20,13 +20,12 @@ public class MenuItem implements Persistable<Integer> {
     @Column(name = "valor", precision = 10, scale = 2, nullable = false)
     private BigDecimal valor;
 
-    // Relacionamento definindo que Vários Itens pertencem a Um Tipo (ManyToOne)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tipo_item_codigo", nullable = false)
     private ItemType tipoItem;
 
     @Column(name = "ativo", nullable = false)
-    private Boolean ativo = true; // Controla o soft delete
+    private Boolean ativo = true; 
 
     @Transient
     private boolean isNovo = true;
@@ -34,8 +33,6 @@ public class MenuItem implements Persistable<Integer> {
     public MenuItem() {
     }
 
-
-    // Métodos do Persistable para controle de chaves manuais
     @Override
     public Integer getId() {
         return this.codigo;
@@ -52,7 +49,6 @@ public class MenuItem implements Persistable<Integer> {
         this.isNovo = false;
     }
 
-    // Getters e Setters
     public Integer getCodigo() {
         return codigo;
     }

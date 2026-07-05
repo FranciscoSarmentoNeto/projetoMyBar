@@ -9,7 +9,7 @@ import br.com.mybar.project.model.Actors.User;
 
 @Entity
 @Table(name = "itens_conta")
-public class ItemConta {
+public class AccountItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,16 +29,13 @@ public class ItemConta {
     @Column(name = "ativo", nullable = false)
     private Boolean ativo = true;
 
-    // Relacionamentos com Usuário para rastreabilidade
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quem_lancou_id", nullable = false)
     private User quemLancou;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quem_removeu_id")
-    private User quemRemoveu; // Pode ser nulo, pois o item pode nunca ser removido
-
-    // Fluxo de tempo e status
+    private User quemRemoveu; 
     @Column(name = "data_solicitacao", nullable = false, updatable = false)
     private LocalDate dataSolicitacao;
 
@@ -57,19 +54,27 @@ public class ItemConta {
     @Column(name = "hora_entrega_cozinha")
     private LocalTime horaEntregaCozinha;
 
-    @Column(name = "data_recebimento_bar")
+    @Column(name = "data_recebimento_balcao")
     private LocalDate dataRecebimentoBar;
 
-    @Column(name = "hora_recebimento_bar")
+    @Column(name = "hora_recebimento_balcao")
     private LocalTime horaRecebimentoBar;
 
-    @Column(name = "data_entrega_bar")
+    @Column(name = "data_entrega_balcao")
     private LocalDate dataEntregaBar;
 
-    @Column(name = "hora_entrega_bar")
+    @Column(name = "hora_entrega_balcao")
     private LocalTime horaEntregaBar;
 
-    public ItemConta() {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "garcom_entrega_id")
+    private User garcomEntrega;
+
+
+
+
+    
+    public AccountItem() {
     }
 
     @PrePersist
@@ -78,7 +83,6 @@ public class ItemConta {
         this.horaSolicitacao = LocalTime.now();
     }
 
-    // Getters e Setters
     public Long getId() {
         return id;
     }
@@ -221,12 +225,20 @@ public class ItemConta {
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        ItemConta itemConta = (ItemConta) o;
+        AccountItem itemConta = (AccountItem) o;
         return Objects.equals(id, itemConta.id);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public User getGarcomEntrega() {
+        return garcomEntrega;
+    }
+
+    public void setGarcomEntrega(User garcomEntrega) {
+        this.garcomEntrega = garcomEntrega;
     }
 }

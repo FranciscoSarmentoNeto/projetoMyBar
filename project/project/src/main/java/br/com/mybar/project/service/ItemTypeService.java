@@ -23,7 +23,6 @@ public class ItemTypeService {
         this.itemCardapioRepository = itemCardapioRepository;
     }
 
-    // Atende ao comando "Pesquisar" da tela, buscando por descrição
     public List<ItemType> pesquisar(String descricao) {
         List<ItemType> todosAtivos = tipoItemRepository.findByAtivoTrue();
 
@@ -42,8 +41,6 @@ public class ItemTypeService {
 
     @Transactional
     public ItemType salvar(ItemType tipoItem) {
-        // Como o Persistable lida com a flag isNovo internamente,
-        // o Spring Data JPA saberá fazer INSERT ou UPDATE corretamente.
         return tipoItemRepository.save(tipoItem);
     }
 
@@ -61,21 +58,17 @@ public class ItemTypeService {
     public void excluir(Integer codigo) {
         ItemType tipoItem = buscarPorCodigo(codigo);
 
-        // para verificar se existem itens associados a este tipo.
         boolean possuiItensAssociados = verificarSePossuiItensNoCardapio(codigo);
 
         if (possuiItensAssociados) {
-            // Se houver itens, apenas desativa impedindo a visualização
             tipoItem.setAtivo(false);
             tipoItemRepository.save(tipoItem);
         } else {
-            // Se não houver, exclui definitivamente do banco
             tipoItemRepository.delete(tipoItem);
         }
     }
 
     private boolean verificarSePossuiItensNoCardapio(Integer codigo) {
-        // Devolve true se o banco encontrar qualquer item atrelado a este tipo
         return itemCardapioRepository.existsByTipoItemCodigo(codigo);
     }
 }

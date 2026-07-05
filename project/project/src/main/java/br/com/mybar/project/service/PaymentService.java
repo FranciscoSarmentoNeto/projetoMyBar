@@ -23,13 +23,10 @@ public class PaymentService {
     @Autowired
     private UserService usuarioService;
 
-    // RF3 — registra um pagamento na conta
     public Payment registrarPagamento(Long contaId, Payment pagamento,
                                         String codigoGarcom, String senha) {
-        // 1. VALIDAR — senha do garçom
         usuarioService.verificarSenhaGarcom(codigoGarcom, senha);
 
-        // 2. BUSCAR — conta existe e está aberta?
         Account conta = iConta.findById(contaId)
                 .orElseThrow(() -> new IllegalArgumentException("Conta não encontrada."));
 
@@ -37,19 +34,14 @@ public class PaymentService {
             throw new IllegalStateException("Conta não está aberta.");
         }
 
-        // 3. PROCESSAR — vincula o pagamento à conta
         pagamento.setConta(conta);
 
-        // 4. SALVAR
         return iPagamento.save(pagamento);
     }
 
-    // RF3 — exclui pagamento com senha de admin
     public void excluirPagamento(Long pagamentoId, String usuarioAdmin, String senha) {
-        // 1. VALIDAR — senha do admin
         usuarioService.verificarSenhaAdmin(usuarioAdmin, senha);
 
-        // 2. BUSCAR — pagamento existe?
         Payment pagamento = iPagamento.findById(pagamentoId)
                 .orElseThrow(() -> new IllegalArgumentException("Pagamento não encontrado."));
 
@@ -63,5 +55,9 @@ public class PaymentService {
         return pagamentos.stream()
                 .map(Payment::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public List<Payment> listarPagamentos(Long contaId) {
+        return iPagamento.findByConta_Id(contaId);
     }
 }

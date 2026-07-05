@@ -30,14 +30,11 @@ public class SecurityFilter extends OncePerRequestFilter {
             if (!login.isEmpty()) {
                 UserDetails user = interfaceUser.findByEmail(login);
 
-                // CRÍTICO: Se o 'user' for nulo, não autentique
                 if (user != null) {
-                    // --- ADICIONE ESTAS 4 LINHAS PARA DEBUG ---
                     System.out.println("=== DEBUG DE SEGURANÇA ===");
                     System.out.println("Usuário Logado: " + user.getUsername());
                     System.out.println("Permissões que o Spring leu: " + user.getAuthorities());
                     System.out.println("==========================");
-                    //Print de debug vai até aqui
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }

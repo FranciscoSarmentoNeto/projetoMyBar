@@ -4,11 +4,15 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import br.com.mybar.project.model.Account;
+import br.com.mybar.project.model.AccountItem;
 import br.com.mybar.project.model.Actors.User;
 import br.com.mybar.project.model.DefinedTypes.AccountStatus;
+import br.com.mybar.project.repository.AccountItemRepositoryInterface;
 import br.com.mybar.project.repository.AccountRepositoryInterface;
 import br.com.mybar.project.repository.UserRepositoryInterface;
+import br.com.mybar.project.model.DataTransferObject.AccountClosingDTO;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -25,14 +29,18 @@ public class AccountService {
     @Autowired
     private UserRepositoryInterface usuarioRepository;
 
+    @Autowired
+    private PaymentService pagamentoService;
+
+    @Autowired
+    private AccountItemRepositoryInterface iItemConta;
+
     @Transactional
     public Account abrirConta(Account novaConta, String codigoGarcom, String senha) {
 
-        // 1. VALIDAR — senha do garçom
         User garcom = usuarioService.autenticarGarcom(codigoGarcom, senha);
         novaConta.setGarconAbertura(usuarioRepository.getReferenceById(garcom.getCodigo()));
 
-        // 2. VALIDAR — CPF já tem conta aberta?
         boolean cpfComContaAberta = iConta.existsByCliente_CpfAndStatus(
                 novaConta.getCliente().getCpf(),
                 AccountStatus.ABERTA
@@ -41,7 +49,6 @@ public class AccountService {
             throw new IllegalStateException("Já existe uma conta aberta para este CPF.");
         }
 
-        // 3. VALIDAR — número do cartão já está em uso?
         boolean numeroEmUso = iConta.existsByNumeroAndStatus(
                 novaConta.getNumero(),
                 AccountStatus.ABERTA
@@ -50,12 +57,10 @@ public class AccountService {
             throw new IllegalStateException("Este número de conta já está em uso.");
         }
 
-        // 4. PROCESSAR — preenche dados automáticos
         novaConta.setStatus(AccountStatus.ABERTA);
         novaConta.setDataAbertura(LocalDate.now());
         novaConta.setHoraAbertura(LocalTime.now());
 
-        // 5. SALVAR
         return iConta.save(novaConta);
     }
 
@@ -67,13 +72,10 @@ public class AccountService {
     @Transactional
     public Account alterarConta(Account contaAlterada, String codigoGarcom, String senha) {
 
-        // 1. VALIDAR — senha do garçom
         User garcom = usuarioService.autenticarGarcom(codigoGarcom, senha);
 
-        // 2. BUSCAR — conta existe?
         Account contaExistente = buscarConta(contaAlterada.getId());
 
-        // 3. VALIDAR — número novo já está em uso em outra conta?
         boolean numeroEmUso = iConta.existsByNumeroAndStatusAndIdNot(
                 contaAlterada.getNumero(),
                 AccountStatus.ABERTA,
@@ -83,12 +85,10 @@ public class AccountService {
             throw new IllegalStateException("Este número de conta já está em uso.");
         }
 
-        // 4. PROCESSAR — atualiza campos permitidos
         contaExistente.setNumero(contaAlterada.getNumero());
         contaExistente.setCliente(contaAlterada.getCliente());
         contaExistente.setGarconAbertura(usuarioRepository.getReferenceById(garcom.getCodigo()));
 
-        // 5. SALVAR
         return iConta.save(contaExistente);
     }
 
@@ -98,18 +98,72 @@ public class AccountService {
     @Transactional
     public void excluirConta(Long id) {
 
-        // 1. BUSCAR
         Account conta = buscarConta(id);
 
-        // 2. VALIDAR — documento diz: só exclui se não tiver itens
-        // quando LancamentoItem existir, adiciona verificação aqui
 
-        // 3. SALVAR
         iConta.delete(conta);
     }
 
     public Long contarContas()
     {
         return iConta.count();
+    }
+
+    @Transactional
+    public AccountClosingDTO fecharConta(Long id, String codigoGarcom, String senha) {
+
+        // 1. VALIDAR — senha do garçom (só valida, não precisa do User)
+        usuarioService.verificarSenhaGarcom(codigoGarcom, senha);
+
+        // 2. BUSCAR — conta existe e está aberta?
+        Account conta = buscarConta(id);
+        if (conta.getStatus() != AccountStatus.ABERTA) {
+            throw new IllegalStateException("Conta não está aberta.");
+        }
+
+        // 3. BUSCAR — itens ativos da conta (o ingresso já entra aqui como um item normal,
+        // pois RF5 diz que ele é lançado na abertura da conta)
+        List<AccountItem> itens = iItemConta.findByContaIdAndAtivoTrue(id);
+
+        // 4. PROCESSAR — soma dos itens (sem alterar o preço travado no lançamento) e gorjeta informativa
+        BigDecimal valorTotalItens = BigDecimal.ZERO;
+        BigDecimal valorGorjeta = BigDecimal.ZERO;
+
+        for (AccountItem item : itens) {
+            BigDecimal valorItem = item.getItemCardapio().getValor()
+                    .multiply(BigDecimal.valueOf(item.getQuantidade()));
+            valorTotalItens = valorTotalItens.add(valorItem);
+
+            BigDecimal percentualGorjeta = item.getItemCardapio().getTipoItem().getGorjeta();
+            BigDecimal gorjetaItem = valorItem
+                    .multiply(percentualGorjeta)
+                    .divide(BigDecimal.valueOf(100));
+            valorGorjeta = valorGorjeta.add(gorjetaItem);
+        }
+
+        BigDecimal valorTotalComGorjeta = valorTotalItens.add(valorGorjeta);
+
+        // 5. VALIDAR — soma dos pagamentos (podem ser vários meios diferentes) confere com o total?
+        BigDecimal valorPago = pagamentoService.somarPagamentos(id);
+        if (valorPago.compareTo(valorTotalComGorjeta) != 0) {
+            throw new IllegalStateException(
+                    "A soma dos pagamentos (R$ " + valorPago +
+                    ") não confere com o valor total da conta (R$ " + valorTotalComGorjeta + ").");
+        }
+
+        // 6. SALVAR — muda o status da conta para fechada
+        conta.setStatus(AccountStatus.FECHADA);
+        iConta.save(conta);
+
+        // 7. RETORNAR — objeto completo com o breakdown do fechamento
+        return new AccountClosingDTO(
+                conta,
+                itens,
+                valorTotalItens,
+                valorGorjeta,
+                valorTotalComGorjeta,
+                valorPago,
+                pagamentoService.listarPagamentos(id)
+        );
     }
 }

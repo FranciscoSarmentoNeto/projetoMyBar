@@ -1,37 +1,42 @@
 package br.com.mybar.project.controller;
 
-import br.com.mybar.project.model.ItemConta;
-import br.com.mybar.project.service.KitchenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import br.com.mybar.project.model.AccountItem;
+import br.com.mybar.project.repository.AccountItemRepositoryInterface;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/kitchen")
-public class KitchenController {
+@RequestMapping("/cozinha")
+public class kitchenController {
 
     @Autowired
-    private KitchenService kitchenService;
+    private AccountItemRepositoryInterface iItemConta;
 
-    /**
-     * UC7: Endpoint para a cozinha indicar que recebeu e iniciou o preparo do pedido.
-     * PUT /api/kitchen/{id}/receber
-     */
-    @PutMapping("/{id}/receber")
-    public ResponseEntity<ItemConta> receberPedido(@PathVariable Long id) {
-        // O próprio KitchenService já faz as validações e lança ResponseStatusException (404 ou 400)
-        ItemConta item = kitchenService.receberPedido(id);
-        return ResponseEntity.ok(item);
+    @GetMapping
+    public ResponseEntity<List<AccountItem>> listar() {
+        return ResponseEntity.ok(iItemConta.findByAtivoTrueAndItemCardapio_TipoItem_CozinhaTrue());
     }
 
-    /**
-     * UC7: Endpoint para a cozinha sinalizar que o pedido está pronto e foi entregue ao balcão/garçom.
-     * PUT /api/kitchen/{id}/entregar
-     */
+    @PutMapping("/{id}/receber")
+    public ResponseEntity<AccountItem> receber(@PathVariable Long id) {
+        AccountItem item = iItemConta.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item não encontrado."));
+        item.setDataRecebimentoCozinha(LocalDate.now());
+        item.setHoraRecebimentoCozinha(LocalTime.now());
+        return ResponseEntity.ok(iItemConta.save(item));
+    }
+
     @PutMapping("/{id}/entregar")
-    public ResponseEntity<ItemConta> entregarPedido(@PathVariable Long id) {
-        // O próprio KitchenService já valida o fluxo e lança ResponseStatusException se houver erro
-        ItemConta item = kitchenService.entregarPedido(id);
-        return ResponseEntity.ok(item);
+    public ResponseEntity<AccountItem> entregar(@PathVariable Long id) {
+        AccountItem item = iItemConta.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Item não encontrado."));
+        item.setDataEntregaCozinha(LocalDate.now());
+        item.setHoraEntregaCozinha(LocalTime.now());
+        return ResponseEntity.ok(iItemConta.save(item));
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import br.com.mybar.project.model.ItemConta;
+import br.com.mybar.project.model.AccountItem;
 import br.com.mybar.project.repository.AccountItemRepositoryInterface; // Assumindo que você criou a interface com este padrão
 
 import java.time.LocalDate;
@@ -18,16 +18,14 @@ public class KitchenService {
     private AccountItemRepositoryInterface itemContaRepository;
 
     @Transactional
-    public ItemConta receberPedido(Long idItemConta) {
-        ItemConta item = itemContaRepository.findById(idItemConta)
+    public AccountItem receberPedido(Long idItemConta) {
+        AccountItem item = itemContaRepository.findById(idItemConta)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item não encontrado."));
 
-        // Valida se o item realmente pertence à cozinha
         if (!item.getItemCardapio().getTipoItem().getCozinha()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Este item não é de preparo da cozinha.");
         }
 
-        // Registra o recebimento (Status passa a ser "Recebido")
         item.setDataRecebimentoCozinha(LocalDate.now());
         item.setHoraRecebimentoCozinha(LocalTime.now());
 
@@ -35,16 +33,14 @@ public class KitchenService {
     }
 
     @Transactional
-    public ItemConta entregarPedido(Long idItemConta) {
-        ItemConta item = itemContaRepository.findById(idItemConta)
+    public AccountItem entregarPedido(Long idItemConta) {
+        AccountItem item = itemContaRepository.findById(idItemConta)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item não encontrado."));
 
-        // Não pode entregar se não tiver recebido antes
         if (item.getDataRecebimentoCozinha() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O pedido precisa ser recebido antes de ser entregue.");
         }
 
-        // Registra a entrega (Status passa a ser "Entregue" pela cozinha)
         item.setDataEntregaCozinha(LocalDate.now());
         item.setHoraEntregaCozinha(LocalTime.now());
 

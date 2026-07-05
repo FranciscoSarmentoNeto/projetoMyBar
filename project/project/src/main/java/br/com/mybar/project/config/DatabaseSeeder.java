@@ -18,10 +18,10 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Value("${api.security.admin.nome:Administrador}")
     private String adminNome;
 
-    @Value("${api.security.admin.email:admin@mybar.com}")
+    @Value("${api.security.admin.email:administrador@gmail.com}")
     private String adminEmail;
 
-    @Value("${api.security.admin.senha:admin123}")
+    @Value("${api.security.admin.senha:1234}")
     private String adminSenha;
 
     public DatabaseSeeder(UserRepositoryInterface repository, PasswordEncoder passwordEncoder) {
